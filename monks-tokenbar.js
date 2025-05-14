@@ -21,6 +21,7 @@ import { SwadeRolls } from "./systems/swade-rolls.js";
 import { SW5eRolls } from "./systems/sw5e-rolls.js";
 import { CoC7Rolls } from "./systems/coc7-rolls.js";
 import { T2K4ERolls } from "./systems/t2k4e-rolls.js";
+import { DegenesisRolls } from "./systems/degenesis-rolls.js";
 
 
 export let debug = (...args) => {
@@ -791,6 +792,8 @@ export class MonksTokenBar {
     }
 
     static getRequestName(requestoptions, request, actors) {
+        log("getRequestName called!")
+
         let name = '';
         switch (request.type) {
             case 'ability': name = i18n("MonksTokenBar.AbilityCheck"); break;
@@ -802,6 +805,7 @@ export class MonksTokenBar {
         let rt = requestoptions.find(o => {
             return o.id == (request.type || request.key);
         });
+        log(rt)
         if (!rt && actors) {
             for (let actor of actors) {
                 let item = actor.items.find(i => i.type == request.type && (MonksTokenBar.slugify(i.name) == request.key || i.getFlag("core", "sourceId") == request.key));
@@ -812,6 +816,7 @@ export class MonksTokenBar {
             }
         }
         let req = (rt?.groups && rt?.groups[request.key]) || (request.type == "dice" && request.name);
+        log(req)
         let flavor = i18n(req?.label || req || rt?.text || "MonksTokenBar.Unknown");
         switch (game.i18n.lang) {
             case "pt-BR":
@@ -1186,7 +1191,9 @@ Hooks.on("setup", () => {
         case 'coc7':
             MonksTokenBar.system = new CoC7Rolls(); break;
         case 't2k4e':
-            MonksTokenBar.system = new T2K4ERolls(); break; 
+            MonksTokenBar.system = new T2K4ERolls(); break;
+        case 'degenesis':
+            MonksTokenBar.system = new DegenesisRolls(); break; 
     }
 
     MonksTokenBar.system.constructor.activateHooks();

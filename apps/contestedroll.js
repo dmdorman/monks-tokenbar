@@ -246,7 +246,7 @@ export class ContestedRoll {
         }*/
     static async rollDice(dice) {
         let r = new Roll(dice);
-        r.evaluate();
+        await r.evaluate();
         return r;
     }
 
