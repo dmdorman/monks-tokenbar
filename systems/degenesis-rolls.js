@@ -3,6 +3,74 @@ import { i18n, MonksTokenBar, log, setting } from "../monks-tokenbar.js"
 import { SavingThrowApp } from "../apps/savingthrow.js";
 import { ContestedRollApp } from "../apps/contestedroll.js";
 
+// var opts = { skipDialog : false, skipDialog : true, rollDataOverride : { secondary : 'force', difficulty: 1, secondaryrollDataOverride: { difficulty : 5 } }}
+// game.actors.get("TlDcrTv9P10nCTWv").rollSkill('brawl', opts)
+
+class DegesisSavingThrowApp extends SavingThrowApp {
+    static get defaultOptions() {
+        return foundry.utils.mergeObject(super.defaultOptions, {
+            id: "requestsavingthrow",
+            title: i18n("MonksTokenBar.RequestRoll"),
+            template: "./modules/monks-tokenbar/templates/savingthrow.html",
+            width: 1000,
+            popOut: true
+        });
+    }
+
+    activateListeners(html) {
+        super.activateListeners(html);
+
+        const requestRollsPrimary = html.find(".request-roll").first();
+        const requestRollsSecondary = requestRollsPrimary.clone();
+
+        const wrapper = '<div class="flexcol"></div>'
+        requestRollsPrimary.wrap(wrapper);
+        requestRollsSecondary.wrap(wrapper)
+
+        const getHeader = (stringType) => {
+            return `
+                <div class="flexrow" style="padding-right:8px;">
+                    <label style="margin-left: 16px; flex: 0 0 50px;">${stringType}</label>
+                    <label style="margin-left: 16px; flex: 0 0 50px;">DC</label>
+                    <input type="number" step="any" id="monks-tokenbar-savingdc" value="{{dc}}" style="flex: 0 0 50px;text-align:right;" />
+                </div>
+            `;
+        }
+
+        const primaryHeader = getHeader("PRIMARY ROLL")
+        const secondaryHeader = getHeader("SECONDARY ROLL")
+
+        const wrapperStyle = {
+            "border": "1px solid var(--c-gold)"
+        }
+        const primaryWrapper = requestRollsPrimary.parent();
+        primaryWrapper.css(wrapperStyle)
+
+        const secondaryWrapper = requestRollsSecondary.parent();
+        primaryWrapper.after(secondaryWrapper);
+
+        requestRollsPrimary.before(primaryHeader)
+        requestRollsSecondary.before(secondaryHeader)
+
+        const skillOptions = html.find(".request-option");
+        
+        skillOptions.css({
+            "color": "var(--c-gold-4)",
+            "font-size": "0.8em",
+        });
+    }
+
+    getData(options) {
+        var data = super.getData(options);
+        data.options = data.options.filter((e) => e.id !== 'dice')
+        return data;
+    }
+
+    async requestRoll(roll, evt) {
+        super.requestRoll(roll, evt);
+    }
+}
+
 class DegeesisContestedRollApp extends ContestedRollApp {
     constructor(options = {}) {
         super(options);
@@ -14,14 +82,14 @@ class DegeesisContestedRollApp extends ContestedRollApp {
     }
 
     activateListeners(html) {
-    super.activateListeners(html);
+        super.activateListeners(html);
 
-    const requestRolls = html.find(".request-roll");
-    requestRolls.css("color", "red");
+        const requestRolls = html.find(".request-roll");
+        requestRolls.css("color", "var(--c-dgns-red)");
 
-    this.tokenOneSkills = requestRolls.eq(0).find("optgroup").not('[label="DICE"]')
-    this.tokenTwoSkills = requestRolls.eq(1).find("optgroup").not('[label="DICE"]')
-  }
+        this.tokenOneSkills = requestRolls.eq(0).find("optgroup").not('[label="DICE"]')
+        this.tokenTwoSkills = requestRolls.eq(1).find("optgroup").not('[label="DICE"]')
+    }
 
     getData(options = {}) {
         const data = super.getData(options);
@@ -124,7 +192,7 @@ export class DegenesisRolls extends BaseRolls {
                     icon: 'fa-tools',
                     click: (event) => {
                         event.preventDefault();
-                        this.savingthrow = new SavingThrowApp().render(true);
+                        this.savingthrow = new DegesisSavingThrowApp().render(true);
                     }
                 },
                 {
