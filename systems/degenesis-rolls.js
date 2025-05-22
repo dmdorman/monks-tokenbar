@@ -13,6 +13,7 @@ class DegesisSavingThrowApp extends SavingThrowApp {
             title: i18n("MonksTokenBar.RequestRoll"),
             template: "./modules/monks-tokenbar/templates/savingthrow.html",
             width: 1000,
+            height: 600,
             popOut: true
         });
     }
@@ -23,41 +24,59 @@ class DegesisSavingThrowApp extends SavingThrowApp {
         const requestRollsPrimary = html.find(".request-roll").first();
         const requestRollsSecondary = requestRollsPrimary.clone();
 
-        const wrapper = '<div class="flexcol"></div>'
-        requestRollsPrimary.wrap(wrapper);
-        requestRollsSecondary.wrap(wrapper)
+        //const wrapper = '<div class="flexcol" style="border:1px solid var(--c-gold);"></div>'
+        //requestRollsPrimary.wrap(wrapper);
+        //requestRollsSecondary.wrap(wrapper)
+
+        const skillOptions = this.requestoptions.map((value) => {
+            if (value.text === "DICE") {
+                return ``
+            }
+
+            log(value)
+
+            return `
+                <optgroup label="${value.text}">
+                    ${Object.entries(value.groups).reduce((acc, [key, val]) => {
+                        return acc + `<option value="${value.id}:${key}">${val}</option>`
+                    }, ``)}
+                </optgroup>
+            `
+        });
+
+        const emptyOption = `
+            <optgroup label="NONE">
+               <option value="none:none">NONE</option>
+            </optgroup>
+        `
 
         const getHeader = (stringType) => {
             return `
-                <div class="flexrow" style="padding-right:8px;">
-                    <label style="margin-left: 16px; flex: 0 0 50px;">${stringType}</label>
+                <div class="flexrow" style="padding-right:8px; padding-top:8px; max-height: 40px;">
+                    <label style="margin-left: 16px; flex: 0 0 150px;">${stringType.toUpperCase()} ROLL</label>
                     <label style="margin-left: 16px; flex: 0 0 50px;">DC</label>
-                    <input type="number" step="any" id="monks-tokenbar-savingdc" value="{{dc}}" style="flex: 0 0 50px;text-align:right;" />
+                    <input type="number" step="any" id="monks-tokenbar-savingdc" value="{{dc}}" style="flex: 0 0 50px;" />
                 </div>
+                <select class="request-roll" data-index="0" id="${stringType}-roll" style="flex: 0 0 150px; color: var(--c-dgns-red);">
+                    ${emptyOption}
+                    ${skillOptions}
+                </select>
             `;
         }
 
-        const primaryHeader = getHeader("PRIMARY ROLL")
-        const secondaryHeader = getHeader("SECONDARY ROLL")
+        const primaryHeader = getHeader("primary")
+        const secondaryHeader = getHeader("secondary")
 
-        const wrapperStyle = {
-            "border": "1px solid var(--c-gold)"
-        }
-        const primaryWrapper = requestRollsPrimary.parent();
-        primaryWrapper.css(wrapperStyle)
+        requestRollsPrimary.before(primaryHeader);
+        requestRollsPrimary.before(secondaryHeader);
 
-        const secondaryWrapper = requestRollsSecondary.parent();
-        primaryWrapper.after(secondaryWrapper);
-
-        requestRollsPrimary.before(primaryHeader)
-        requestRollsSecondary.before(secondaryHeader)
-
-        const skillOptions = html.find(".request-option");
-        
-        skillOptions.css({
-            "color": "var(--c-gold-4)",
-            "font-size": "0.8em",
+        $('.request-roll#primary-roll', html).on('change', event => {
+            const select = event.currentTarget;
+            const selectedValue = select.value;
+            log(`Roll option changed to: ${selectedValue}`)
         });
+
+        //requestRollsPrimary.remove();
     }
 
     getData(options) {
@@ -67,6 +86,15 @@ class DegesisSavingThrowApp extends SavingThrowApp {
     }
 
     async requestRoll(roll, evt) {
+        this.request = {
+            type: 'skill',
+            key: 'primary',
+            secondary: 'secondary',
+            count: 1
+        }
+
+        log(this.request)
+
         super.requestRoll(roll, evt);
     }
 }
@@ -133,6 +161,8 @@ export class DegenesisRolls extends BaseRolls {
         })
 
         const dice = Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`${i+1}d6`, `${i+1}d6`]));
+
+        console.log({dice})
 
         this._requestoptions = [
             { id: "dice", text: "DICE", cssclass: "dice-group", groups: dice },
@@ -214,6 +244,8 @@ export class DegenesisRolls extends BaseRolls {
         let options = {}
         let context = actor;
 
+        log({request})
+
         if (request.type == 'skill') {
             rollfn = actor.rollSkill;
         }
@@ -229,3 +261,35 @@ export class DegenesisRolls extends BaseRolls {
         };
     }
 }
+
+Hooks.on("renderSavingThrowApp", (app, html) => {
+    log("renderSavingThrowApp!")
+
+    return
+
+    if (app.request == undefined) {
+        let request = MonksTokenBar.system.defaultRequest(app) || SavingThrow.lastRequest;
+        /*if (!request) {
+            request = [];
+            $('.request-roll .request-option:first', html).each(function () {
+                request.push({ type: this.dataset.type, key: this.dataset.key });
+            });
+        }*/
+        // confirm that the requests are on the list
+        if (request) {
+            request = request instanceof Array ? request : [request];
+            request = request.filter(r => {
+                return $(`.request-roll .request-option[data-type="${r.type}"][data-key="${r.key}"]`, html).length;
+            });
+        }
+
+        app.request = request;
+    }
+
+    for (let r of app.request || []) {
+        $(`.request-roll .request-option[data-type="${r.type}"][data-key="${r.key}"]`, html).addClass('selected');
+    }
+
+    $('.items-header .item-control[data-type="actor"]', html).toggleClass('selected', app.selected === true);
+    $('#savingthrow-rollmode', html).val(app.rollmode);
+});
